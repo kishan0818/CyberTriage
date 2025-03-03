@@ -3,9 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DDoS Detection System</title>
+    <title>CyberTriage</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .logo {
+        text-align: center; /* Centers all text inside */
+        display: flex;
+        flex-direction: column; /* Stack items vertically */
+        align-items: center; /* Ensure all elements are centered */
+         }
+
+        .subtitle {
+            white-space: nowrap; /* Prevents text from wrapping */
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            display: block; /* Ensures it's treated as a block element */
+            margin-top: 5px;
+        }
+
+    </style>
 </head>
 <body>
     <div class="container">
@@ -13,7 +31,10 @@
             <div class="auth-card">
                 <div class="logo">
                     <i class="fas fa-shield-alt"></i>
-                    <h1>DDoS Shield</h1>
+                    <h1>Cyber Triage System</h1>
+                    <h3 class="subtitle">
+                        DoS Detection and Deterrence
+                    </h3>
                 </div>
                 <h2>Login to Your Account</h2>
                 <form action="/login" method="POST" class="auth-form">

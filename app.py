@@ -174,8 +174,8 @@ def process_csv_directly(filepath):
                 std_val = values.std()
                 if std_val > 0:  # Avoid division by zero
                     threshold_values[col] = {
-                        'suspicious': mean_val + 2 * std_val,
-                        'malicious': mean_val + 3 * std_val
+                        'suspicious': mean_val + 1.4 * std_val,
+                        'malicious': mean_val +  1.8 * std_val
                     }
                     print(f"For {col}: suspicious > {threshold_values[col]['suspicious']}, malicious > {threshold_values[col]['malicious']}")
     
