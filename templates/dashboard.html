@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDoS Shield - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Include sidebar styles here or link to external CSS */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+        }
+        .main-content {
+            padding: 20px;
+            margin-left: 250px;
+            transition: margin-left 0.3s ease;
+        }
+        .dashboard-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .dashboard-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .dashboard-card i {
+            font-size: 40px;
+            margin-right: 20px;
+        }
+        .dashboard-card-info h3 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        .dashboard-card-info p {
+            margin: 5px 0 0;
+            color: #7f8c8d;
+        }
+        .dashboard-charts {
+            display: flex;
+            gap: 20px;
+        }
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Include sidebar.html here -->
+    <script src="sidebar.html"></script>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Dashboard Overview</h1>
+        </div>
+
+        <div class="dashboard-cards">
+            <div class="dashboard-card">
+                <i class="fas fa-server text-primary"></i>
+                <div class="dashboard-card-info">
+                    <h3>Total Analyzed Traffic</h3>
+                    <p>125,654 requests</p>
+                </div>
+            </div>
+            <div class="dashboard-card">
+                <i class="fas fa-shield-alt text-danger"></i>
+                <div class="dashboard-card-info">
+                    <h3>Blocked Threats</h3>
+                    <p>342 malicious IPs</p>
+                </div>
+            </div>
+            <div class="dashboard-card">
+                <i class="fas fa-chart-line text-success"></i>
+                <div class="dashboard-card-info">
+                    <h3>Detection Accuracy</h3>
+                    <p>98.2%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-charts">
+            <div class="chart-container">
+                <h3>Threat Detection Trends</h3>
+                <!-- Placeholder for Chart.js or similar visualization -->
+                <canvas id="threatTrends"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Traffic Analysis</h3>
+                <!-- Placeholder for Chart.js or similar visualization -->
+                <canvas id="trafficAnalysis"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Example Chart.js configurations
+        new Chart(document.getElementById('threatTrends'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Threats Detected',
+                    data: [12, 19, 3, 5, 2, 3],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            }
+        });
+
+        new Chart(document.getElementById('trafficAnalysis'), {
+            type: 'bar',
+            data: {
+                labels: ['Normal', 'Suspicious', 'Malicious'],
+                datasets: [{
+                    label: 'Traffic Classification',
+                    data: [80, 15, 5],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(255, 99, 132, 0.6)'
+                    ]
+                }]
+            }
+        });
+    </script>
+</body>
+</html>

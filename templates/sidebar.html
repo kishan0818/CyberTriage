@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Sidebar styles */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar .logo {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar .logo i {
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
+        .sidebar h1 {
+            margin: 0;
+            font-size: 20px;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed h1 {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar nav ul li {
+            padding: 15px 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .sidebar nav ul li:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .sidebar nav ul li.active {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .sidebar nav ul li a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar nav ul li i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar.collapsed nav ul li span {
+            display: none;
+        }
+
+        .hamburger-menu {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1100;
+            cursor: pointer;
+            color: #2c3e50;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.collapsed {
+            margin-left: 70px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -250px;
+            }
+            .sidebar.active {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .main-content.collapsed {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hamburger-menu">
+        <i class="fas fa-bars fa-2x"></i>
+    </div>
+
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i>
+            <h1>DDoS Shield</h1>
+        </div>
+        <nav>
+            <ul>
+                <li>
+                    <a href="dashboard.html">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="history.html">
+                        <i class="fas fa-history"></i>
+                        <span>History</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="settings.html">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+                <li class="logout">
+                    <a href="/logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <script>
+        document.querySelector('.hamburger-menu').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (mainContent) {
+                mainContent.classList.toggle('collapsed');
+            }
+        });
+    </script>
+</body>
+</html>
