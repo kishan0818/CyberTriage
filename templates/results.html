@@ -67,162 +67,7 @@
                     <div class="results-header">
                         <h2><i class="fas fa-exclamation-triangle"></i> Suspicious IP Addresses Detected</h2>
                         <div class="actions">
-                            <button class="btn btn-secondary">
-                                <i class="fas fa-download"></i> Export Results
-                            </button>
-                            <button class="btn btn-secondary" onclick="window.location.href='/upload'">
-                                <i class="fas fa-upload"></i> New Analysis
-                            </button>
-                        </div>
-                    </div>
-                    <div class="results-summary">
-                        <div class="summary-card">
-                            <div class="summary-icon danger">
-                                <i class="fas fa-skull-crossbones"></i>
-                            </div>
-                            <div class="summary-info">
-                                <h3>{{ malicious_count }}</h3>
-                                <p>Malicious IPs</p>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-icon warning">
-                                <i class="fas fa-exclamation-circle"></i>
-                            </div>
-                            <div class="summary-info">
-                                <h3>{{ suspicious_count }}</h3>
-                                <p>Suspicious IPs</p>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-icon success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="summary-info">
-                                <h3>{{ benign_count }}</h3>
-                                <p>Benign IPs</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="results-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>IP Address</th>
-                                    <th>Risk Level</th>
-                                    <th>Confidence</th>
-                                    <th>Traffic Volume</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for ip in results %}
-                                <tr class="{{ ip.risk_class }}">
-                                    <td>{{ ip.address }}</td>
-                                    <td>
-                                        <span class="badge {{ ip.risk_class }}">{{ ip.risk_level }}</span>
-                                    </td>
-                                    <td>{{ ip.confidence }}%</td>
-                                    <td>{{ ip.traffic }} req/s</td>
-                                    <td>
-                                        <button class="btn-icon">
-                                            <i class="fas fa-ban"></i>
-                                        </button>
-                                        <button class="btn-icon">
-                                            <i class="fas fa-info-circle"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Simple script to show filename when selected
-        document.getElementById('file').addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
-            document.querySelector('.file-info').textContent = fileName;
-        });
-    </script>
-</body>
-</html>
-
- <!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DDoS Detection Results</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="dashboard">
-        <div class="sidebar">
-            <div class="logo">
-                <i class="fas fa-shield-alt"></i>
-                <h1>DDoS Shield</h1>
-            </div>
-            <nav>
-                <ul>
-                    <li class="active">
-                        <a href="#"><i class="fas fa-upload"></i> Upload Dataset</a>
-                    </li>
-                    <li>
-                        <a href="#"><i class="fas fa-chart-line"></i> Dashboard</a>
-                    </li>
-                    <li>
-                        <a href="#"><i class="fas fa-history"></i> History</a>
-                    </li>
-                    <li>
-                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
-                    </li>
-                    <li class="logout">
-                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-        <div class="main-content">
-            <div class="header">
-                <h1>DDoS Attack Detection</h1>
-                <div class="user-info">
-                    <span>Welcome, {{ username }}</span>
-                    <i class="fas fa-user-circle"></i>
-                </div>
-            </div>
-            <div class="content-container">
-                {% if not results %}
-                <div class="upload-section">
-                    <h2><i class="fas fa-cloud-upload-alt"></i> Upload Network Traffic Data</h2>
-                    <p>Upload a CSV file containing network traffic data for analysis</p>
-                    <form action="/upload" method="POST" enctype="multipart/form-data" class="upload-form">
-                        <div class="file-upload">
-                            <input type="file" name="file" id="file" accept=".csv" required>
-                            <label for="file">
-                                <i class="fas fa-file-csv"></i>
-                                <span>Choose a CSV file</span>
-                            </label>
-                            <div class="file-info">No file selected</div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search"></i>
-                            Analyze for DDoS Attacks
-                        </button>
-                    </form>
-                </div>
-                {% else %}
-                <div class="results-section">
-                    <div class="results-header">
-                        <h2><i class="fas fa-exclamation-triangle"></i> Suspicious IP Addresses Detected</h2>
-                        <div class="actions">
-                            <button class="btn btn-secondary">
+                            <button class="btn btn-secondary" id="exportBtn">
                                 <i class="fas fa-download"></i> Export Results
                             </button>
                             <button class="btn btn-secondary" onclick="window.location.href='/upload'">
@@ -279,15 +124,26 @@
                                         <span class="badge {{ ip.risk_class }}">{{ ip.risk_level }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge {{ ip.risk_class }}">{{ ip.attack_type }}</span>
+                                        {% if ip.attack_type %}
+                                            <span class="badge {{ ip.risk_class }}">{{ ip.attack_type }}</span>
+                                        {% else %}
+                                            <span class="badge {{ ip.risk_class }}">
+                                                {% if ip.risk_level == "High Risk" %}DDoS
+                                                {% elif ip.risk_level == "Suspicious" %}Potential DDoS
+                                                {% else %}Normal Traffic
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td>{{ ip.confidence }}%</td>
                                     <td>{{ ip.traffic }} req/s</td>
                                     <td>
-                                        <button class="btn-icon">
+                                        <button class="btn-icon block-ip" data-ip="{{ ip.address }}">
                                             <i class="fas fa-ban"></i>
                                         </button>
-                                        <button class="btn-icon">
+                                        <button class="btn-icon view-details" data-ip="{{ ip.address }}" 
+                                                data-risk="{{ ip.risk_level }}" 
+                                                data-attack="{{ ip.attack_type }}">
                                             <i class="fas fa-info-circle"></i>
                                         </button>
                                     </td>
@@ -302,12 +158,273 @@
         </div>
     </div>
 
+    <!-- Modal for IP Details -->
+    <!-- <div id="ipDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>IP Address Details</h2>
+            <div id="ipDetailsContent"> -->
+                <!-- Details will be loaded here -->
+            <!-- </div>
+            <div class="attack-info" id="attackDetails" style="display: none; margin-top: 20px; padding: 15px; border-top: 1px solid #eee;">
+                <h3>Attack Type Information</h3>
+                <div id="attackDescription"></div>
+            </div>
+        </div>
+    </div> -->
+
     <script>
         // Simple script to show filename when selected
         document.getElementById('file').addEventListener('change', function(e) {
             const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
             document.querySelector('.file-info').textContent = fileName;
         });
+
+        // Script to handle export functionality
+        document.getElementById('exportBtn')?.addEventListener('click', function() {
+            const table = document.querySelector('.results-table table');
+            if (!table) return;
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    // Get text content and clean it up
+                    let text = cols[j].textContent.trim();
+                    // Remove inner elements' text for columns with badges or buttons
+                    if (cols[j].querySelector('.badge')) {
+                        text = cols[j].querySelector('.badge').textContent.trim();
+                    }
+                    if (j === cols.length - 1) {
+                        // Skip action buttons column
+                        continue;
+                    }
+                    // Add quotes for CSV
+                    row.push('"' + text.replace(/"/g, '""') + '"');
+                }
+                csv.push(row.join(','));
+            }
+            
+            const csvContent = "data:text/csv;charset=utf-8," + csv.join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "ddos_detection_results.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Add event listeners for block and view buttons
+        document.querySelectorAll('.block-ip').forEach(button => {
+            button.addEventListener('click', function() {
+                const ip = this.getAttribute('data-ip');
+                alert(`IP ${ip} has been blocked from accessing the network.`);
+                // In a real app, this would send a request to the backend to block the IP
+            });
+        });
+
+        // Dictionary of attack type descriptions
+        const attackDescriptions = {
+            "DDoS": "Distributed Denial of Service - An attack where multiple compromised systems attack a target, causing denial of service for users of the targeted system.",
+            "DrDoS": "Distributed Reflection Denial of Service - A DDoS attack that relies on the use of publicly accessible UDP servers, as well as bandwidth amplification factors, to overwhelm a target with UDP traffic.",
+            "APDoS": "Advanced Persistent Denial of Service - A sophisticated, organized attack characterized by simultaneous attacks from different vectors that use several attack tools to target vulnerabilities in the network infrastructure.",
+            "SYN Flood": "An attack that exploits the TCP/IP handshake by sending a target system a large number of SYN packets without completing the handshake, exhausting server resources.",
+            "UDP Flood": "An attack that sends a large number of UDP packets to random ports on a target server, causing the server to repeatedly check for applications on those ports and reply with 'Destination Unreachable' packets.",
+            "HTTP Flood": "An attack that floods a web server with HTTP requests, consuming server resources and preventing legitimate users from accessing the service.",
+            "ICMP Flood": "An attack that overwhelms a targeted resource with ICMP echo request (ping) packets, causing the target to become inaccessible to normal traffic.",
+            "Potential DDoS": "Traffic patterns that show characteristics similar to DDoS attacks but haven't reached critical thresholds.",
+            "Normal Traffic": "Network traffic patterns that appear to be legitimate and don't show signs of malicious intent.",
+            "Scanning": "A reconnaissance technique where an attacker probes network ports to find vulnerabilities.",
+            "Probing": "A technique to gather information about a network or its systems to identify potential vulnerabilities.",
+            "Unusual Traffic": "Network traffic that deviates from normal patterns but doesn't clearly indicate an attack."
+        };
+
+        // Add functionality for the modal
+        const modal = document.getElementById('ipDetailsModal');
+        const modalContent = document.getElementById('ipDetailsContent');
+        const attackDetails = document.getElementById('attackDetails');
+        const attackDescription = document.getElementById('attackDescription');
+        const closeBtn = document.querySelector('.close');
+
+        document.querySelectorAll('.view-details').forEach(button => {
+            button.addEventListener('click', function() {
+                const ip = this.getAttribute('data-ip');
+                const riskLevel = this.getAttribute('data-risk');
+                const attackType = this.getAttribute('data-attack');
+                const row = this.closest('tr');
+                const confidence = row.querySelector('td:nth-child(4)').textContent;
+                const traffic = row.querySelector('td:nth-child(5)').textContent;
+                
+                // Create HTML for IP details
+                let detailsHTML = `
+                    <div class="ip-details">
+                        <div class="detail-row">
+                            <div class="detail-label">IP Address:</div>
+                            <div class="detail-value">${ip}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Risk Level:</div>
+                            <div class="detail-value"><span class="badge ${row.className}">${riskLevel}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Confidence:</div>
+                            <div class="detail-value">${confidence}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Traffic Volume:</div>
+                            <div class="detail-value">${traffic}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Attack Type:</div>
+                            <div class="detail-value"><span class="badge ${row.className}">${attackType}</span></div>
+                        </div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn btn-danger block-action" data-ip="${ip}">
+                            <i class="fas fa-ban"></i> Block IP
+                        </button>
+                        <button class="btn btn-secondary monitor-action" data-ip="${ip}">
+                            <i class="fas fa-eye"></i> Monitor
+                        </button>
+                        <button class="btn btn-primary whois-action" data-ip="${ip}">
+                            <i class="fas fa-search"></i> WHOIS Lookup
+                        </button>
+                    </div>
+                `;
+                
+                // Update modal content
+                modalContent.innerHTML = detailsHTML;
+                
+                // Show/hide attack description
+                if (attackType && attackDescriptions[attackType]) {
+                    attackDescription.innerHTML = attackDescriptions[attackType];
+                    attackDetails.style.display = 'block';
+                } else {
+                    attackDetails.style.display = 'none';
+                }
+                
+                // Show the modal
+                modal.style.display = 'block';
+                
+                // Add event listeners for action buttons in the modal
+                document.querySelector('.block-action').addEventListener('click', function() {
+                    const actionIp = this.getAttribute('data-ip');
+                    alert(`IP ${actionIp} has been blocked from accessing the network.`);
+                    modal.style.display = 'none';
+                });
+                
+                document.querySelector('.monitor-action').addEventListener('click', function() {
+                    const actionIp = this.getAttribute('data-ip');
+                    alert(`IP ${actionIp} has been added to the monitoring list.`);
+                });
+                
+                document.querySelector('.whois-action').addEventListener('click', function() {
+                    const actionIp = this.getAttribute('data-ip');
+                    alert(`Performing WHOIS lookup for IP ${actionIp}...`);
+                    // In a real application, this would fetch WHOIS data from a backend endpoint
+                });
+            });
+        });
+        
+        // Close the modal when clicking the close button
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        
+        // Close the modal when clicking outside the modal content
+        window.addEventListener('click', function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Add CSS for modal display
+        if (!document.getElementById('modalStyles')) {
+            const style = document.createElement('style');
+            style.id = 'modalStyles';
+            style.innerHTML = `
+                .modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.5);
+                }
+                
+                .modal-content {
+                    background-color: #fff;
+                    margin: 10% auto;
+                    padding: 20px;
+                    border-radius: 8px;
+                    width: 70%;
+                    max-width: 600px;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                    position: relative;
+                }
+                
+                .close {
+                    position: absolute;
+                    right: 20px;
+                    top: 15px;
+                    font-size: 28px;
+                    font-weight: bold;
+                    cursor: pointer;
+                }
+                
+                .ip-details {
+                    margin: 20px 0;
+                }
+                
+                .detail-row {
+                    display: flex;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #eee;
+                    padding-bottom: 10px;
+                }
+                
+                .detail-label {
+                    font-weight: bold;
+                    width: 150px;
+                }
+                
+                .detail-value {
+                    flex: 1;
+                }
+                
+                .detail-actions {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 20px;
+                }
+                
+                @media (max-width: 768px) {
+                    .modal-content {
+                        width: 90%;
+                        margin: 20% auto;
+                    }
+                    
+                    .detail-actions {
+                        flex-direction: column;
+                    }
+                    
+                    .detail-row {
+                        flex-direction: column;
+                    }
+                    
+                    .detail-label {
+                        width: 100%;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     </script>
 </body>
-</html> -->
+</html>
