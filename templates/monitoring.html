@@ -218,7 +218,10 @@
             fetch('/get_monitoring_results')
                 .then(response => response.json())
                 .then(data => {
+                    console.log("Received monitoring data:", data);  // Debug log
+                    
                     if (!data.is_active) {
+                        console.log("Monitoring is not active");  // Debug log
                         isMonitoring = false;
                         updateUI();
                         stopUpdates();
@@ -226,6 +229,8 @@
                     }
                     
                     const results = data.results;
+                    console.log("Processing results:", results);  // Debug log
+                    
                     const tbody = document.getElementById('monitoringResults');
                     tbody.innerHTML = '';
                     
@@ -233,33 +238,44 @@
                     let suspicious = 0;
                     let normal = 0;
                     
-                    results.forEach(result => {
+                    if (results && results.length > 0) {
+                        results.forEach(result => {
+                            const row = document.createElement('tr');
+                            row.className = result.risk_class;
+                            
+                            // Count by risk level
+                            if (result.risk_level === 'High Risk') highRisk++;
+                            else if (result.risk_level === 'Suspicious') suspicious++;
+                            else normal++;
+                            
+                            row.innerHTML = `
+                                <td>${result.address}</td>
+                                <td><span class="badge ${result.risk_class}">${result.risk_level}</span></td>
+                                <td><span class="badge ${result.risk_class}">${result.attack_type}</span></td>
+                                <td>${result.confidence}%</td>
+                                <td>${result.traffic} req/s</td>
+                                <td>
+                                    <button class="btn-icon block-ip" data-ip="${result.address}">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                    <button class="btn-icon view-details" data-ip="${result.address}">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                </td>
+                            `;
+                            
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        // Add a message when no results
                         const row = document.createElement('tr');
-                        row.className = result.risk_class;
-                        
-                        // Count by risk level
-                        if (result.risk_level === 'High Risk') highRisk++;
-                        else if (result.risk_level === 'Suspicious') suspicious++;
-                        else normal++;
-                        
                         row.innerHTML = `
-                            <td>${result.address}</td>
-                            <td><span class="badge ${result.risk_class}">${result.risk_level}</span></td>
-                            <td><span class="badge ${result.risk_class}">${result.attack_type}</span></td>
-                            <td>${result.confidence}%</td>
-                            <td>${result.traffic} req/s</td>
-                            <td>
-                                <button class="btn-icon block-ip" data-ip="${result.address}">
-                                    <i class="fas fa-ban"></i>
-                                </button>
-                                <button class="btn-icon view-details" data-ip="${result.address}">
-                                    <i class="fas fa-info-circle"></i>
-                                </button>
+                            <td colspan="6" class="text-center">
+                                <i>No traffic detected yet. Monitoring is active...</i>
                             </td>
                         `;
-                        
                         tbody.appendChild(row);
-                    });
+                    }
                     
                     // Update stats
                     document.getElementById('highRiskCount').textContent = highRisk;
@@ -278,6 +294,15 @@
                 })
                 .catch(error => {
                     console.error('Error updating results:', error);
+                    const tbody = document.getElementById('monitoringResults');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Error updating results. Check console for details.
+                            </td>
+                        </tr>
+                    `;
                 });
         }
         

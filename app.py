@@ -984,13 +984,48 @@ def save_blocked_ips(blocked_ips):
     except Exception as e:
         print(f"Error saving blocked IPs file: {e}")
 
+def get_tshark_path():
+    """Get the full path to tshark executable"""
+    # Common Wireshark installation paths on Windows
+    possible_paths = [
+        r"C:\Program Files\Wireshark\tshark.exe",
+        r"C:\Program Files (x86)\Wireshark\tshark.exe",
+        # Add the path from your Wireshark installation if different
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    return None
+
 def capture_packets():
     """Capture packets using tshark and process them"""
     global CAPTURE_ACTIVE
     
+    print("Starting packet capture...")
+    
+    # Get tshark path
+    tshark_path = get_tshark_path()
+    if not tshark_path:
+        print("Error: tshark not found. Please install Wireshark or provide the correct path.")
+        CAPTURE_ACTIVE = False
+        return
+    
+    print(f"Found tshark at: {tshark_path}")
+    
+    # First list available interfaces
+    try:
+        interfaces_cmd = [tshark_path, '-D']
+        interfaces = subprocess.run(interfaces_cmd, capture_output=True, text=True)
+        print("Available interfaces:")
+        print(interfaces.stdout)
+    except Exception as e:
+        print(f"Error listing interfaces: {e}")
+    
     # Command to run tshark
     tshark_cmd = [
-        'tshark',
+        tshark_path,  # Use full path to tshark
         '-i', '1',  # Interface number (change as needed)
         '-T', 'fields',
         '-E', 'separator=,',
@@ -1005,7 +1040,24 @@ def capture_packets():
     ]
     
     try:
-        process = subprocess.Popen(tshark_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        print(f"Running tshark command: {' '.join(tshark_cmd)}")
+        process = subprocess.Popen(
+            tshark_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW  # Hide console window
+        )
+        
+        # Check for immediate errors
+        time.sleep(1)
+        if process.poll() is not None:
+            error = process.stderr.read()
+            print(f"Tshark error: {error}")
+            CAPTURE_ACTIVE = False
+            return
+        
+        print("Tshark process started successfully")
         
         # Dictionary to store packet counts
         packet_counts = defaultdict(lambda: {
@@ -1015,19 +1067,24 @@ def capture_packets():
             'last_update': time.time()
         })
         
+        print("Entering capture loop...")
         while CAPTURE_ACTIVE:
             line = process.stdout.readline()
             if not line:
                 continue
+            
+            print(f"Raw packet data: {line.strip()}")
                 
             fields = line.strip().split(',')
             if len(fields) < 8:
+                print(f"Invalid packet data format: {fields}")
                 continue
                 
             src_ip, dst_ip, tcp_sport, tcp_dport, udp_sport, udp_dport, icmp_type, protocol = fields
             
             # Process source IP
             if src_ip:
+                print(f"Processing packet from IP: {src_ip}, Protocol: {protocol}")
                 if protocol == 'TCP':
                     packet_counts[src_ip]['TCP_Packet_Count'] += 1
                 elif protocol == 'UDP':
@@ -1038,6 +1095,9 @@ def capture_packets():
                 # Check if 30 seconds have passed for this IP
                 current_time = time.time()
                 if current_time - packet_counts[src_ip]['last_update'] >= 30:
+                    print(f"30-second interval reached for IP: {src_ip}")
+                    print(f"Packet counts: {packet_counts[src_ip]}")
+                    
                     data = {
                         'IP': src_ip,
                         'TCP_Packet_Count': packet_counts[src_ip]['TCP_Packet_Count'],
@@ -1060,8 +1120,10 @@ def capture_packets():
                     }
                     
                     # Put data in queue for processing
+                    print(f"Putting data in queue: {data}")
                     PACKET_QUEUE.put(data)
         
+        print("Capture loop ended, terminating tshark...")
         process.terminate()
         
     except Exception as e:
@@ -1073,18 +1135,28 @@ def process_packet_data():
     """Process packet data from queue and update monitoring results"""
     global MONITORING_RESULTS
     
+    print("Starting packet data processing thread...")
+    
     while CAPTURE_ACTIVE:
         try:
-            # Get data from queue
-            data = PACKET_QUEUE.get(timeout=1)
+            # Get data from queue with a timeout of 1 second
+            try:
+                data = PACKET_QUEUE.get(timeout=1)
+                print(f"Received data from queue: {data}")
+            except queue.Empty:
+                continue
             
             # Create DataFrame with single row
             df = pd.DataFrame([data])
+            print(f"Created DataFrame: {df.head()}")
             
             # Process with ML model
+            print("Processing with ML model...")
             results = process_with_ml_model(df)
+            print(f"ML model results: {results}")
             
             if results:
+                print(f"Updating monitoring results with: {results}")
                 # Update monitoring results
                 with MONITORING_LOCK:
                     # Remove old entry for this IP if exists
@@ -1093,9 +1165,10 @@ def process_packet_data():
                     MONITORING_RESULTS.extend(results)
                     # Sort results
                     MONITORING_RESULTS.sort(key=lambda x: {"High Risk": 0, "Suspicious": 1, "Normal": 2}[x["risk_level"]])
+                print(f"Current monitoring results: {MONITORING_RESULTS}")
+            else:
+                print("No results returned from ML model")
         
-        except queue.Empty:
-            continue
         except Exception as e:
             print(f"Error processing packet data: {e}")
             traceback.print_exc()
