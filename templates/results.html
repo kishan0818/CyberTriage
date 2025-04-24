@@ -150,6 +150,19 @@
                         </table>
                     </div>
                 </div>
+                <div class="results-section realtime-section" style="margin-top: 30px;">
+                    <div class="results-header">
+                        <h2><i class="fas fa-chart-line"></i> Real-time Monitoring Results</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary" onclick="window.location.href='/monitoring'">
+                                <i class="fas fa-chart-line"></i> Go to Monitoring
+                            </button>
+                        </div>
+                    </div>
+                    <div id="realtimeResults">
+                        <!-- Real-time results will be loaded here -->
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -436,6 +449,80 @@
                 modal.style.display = 'none';
             }
         });
+
+        // Function to load real-time results
+        function loadRealtimeResults() {
+            fetch('/get_monitoring_results')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('realtimeResults');
+                    if (!data.results || data.results.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-chart-line empty-icon"></i>
+                                <h3>No Real-time Data</h3>
+                                <p>Start real-time monitoring to see results here.</p>
+                                <button class="btn btn-primary" onclick="window.location.href='/monitoring'">
+                                    Go to Monitoring
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Create table with results
+                    container.innerHTML = `
+                        <div class="results-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Risk Level</th>
+                                        <th>Attack Type</th>
+                                        <th>Confidence</th>
+                                        <th>Traffic Volume</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.results.map(result => `
+                                        <tr class="${result.risk_class}">
+                                            <td>${result.address}</td>
+                                            <td><span class="badge ${result.risk_class}">${result.risk_level}</span></td>
+                                            <td><span class="badge ${result.risk_class}">${result.attack_type}</span></td>
+                                            <td>${result.confidence}%</td>
+                                            <td>${result.traffic} req/s</td>
+                                            <td>
+                                                <button class="btn-icon block-ip" data-ip="${result.address}">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                                <button class="btn-icon view-details" data-ip="${result.address}">
+                                                    <i class="fas fa-info-circle"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    // Add event listeners for new buttons
+                    container.querySelectorAll('.block-ip').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const ip = this.getAttribute('data-ip');
+                            if (confirm(`Are you sure you want to block IP ${ip}?`)) {
+                                blockIP(ip, this);
+                            }
+                        });
+                    });
+                })
+                .catch(error => console.error('Error loading real-time results:', error));
+        }
+
+        // Load real-time results every 5 seconds
+        setInterval(loadRealtimeResults, 5000);
+        loadRealtimeResults(); // Initial load
     </script>
 
     <style>

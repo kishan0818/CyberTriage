@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Dataset | DDoS Shield</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>DDoS Shield</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active">
+                        <a href="/upload"><i class="fas fa-upload"></i> Upload Dataset</a>
+                    </li>
+                    <li>
+                        <a href="/monitoring"><i class="fas fa-chart-line"></i> Real-time Monitoring</a>
+                    </li>
+                    <li>
+                        <a href="/blocked_ips"><i class="fas fa-ban"></i> Blocked IPs</a>
+                    </li>
+                    <li>
+                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                    </li>
+                    <li class="logout">
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1>Upload Network Traffic Dataset</h1>
+                <div class="user-info">
+                    <span>Welcome, {{ username }}</span>
+                    <i class="fas fa-user-circle"></i>
+                </div>
+            </div>
+            <div class="content-container">
+                <div class="upload-section">
+                    <div class="upload-card">
+                        <h2><i class="fas fa-cloud-upload-alt"></i> Upload Dataset</h2>
+                        <p>Upload a CSV file containing network traffic data for analysis</p>
+                        <form action="/process_logs" method="POST" enctype="multipart/form-data" class="upload-form">
+                            <div class="file-upload">
+                                <input type="file" name="file" id="file" accept=".csv" required>
+                                <label for="file">
+                                    <i class="fas fa-file-csv"></i>
+                                    <span>Choose a CSV file</span>
+                                </label>
+                                <div class="file-info">No file selected</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                                Analyze for DDoS Attacks
+                            </button>
+                        </form>
+                    </div>
+                    <div class="upload-info">
+                        <h3>Dataset Requirements</h3>
+                        <ul>
+                            <li><i class="fas fa-check"></i> CSV format with headers</li>
+                            <li><i class="fas fa-check"></i> IP address column</li>
+                            <li><i class="fas fa-check"></i> Traffic metrics (TCP/UDP/ICMP packets)</li>
+                            <li><i class="fas fa-check"></i> Optional: Subnet information</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show filename when selected
+        document.getElementById('file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+            document.querySelector('.file-info').textContent = fileName;
+        });
+    </script>
+
+    <style>
+        .upload-section {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .upload-card {
+            flex: 2;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .upload-info {
+            flex: 1;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .file-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload label:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            color: #6c757d;
+        }
+        
+        .upload-info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .upload-info li {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .upload-info i {
+            color: #28a745;
+        }
+    </style>
+</body>
+</html> 

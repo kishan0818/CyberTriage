@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import os
 import pandas as pd
 import numpy as np
@@ -9,6 +9,10 @@ import ipaddress  # For subnet extraction
 import subprocess
 import json
 from datetime import datetime
+import threading
+import queue
+import time
+from collections import defaultdict
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a random secure key
@@ -41,6 +45,12 @@ except Exception as e:
     label_encoder = None
     expected_features = None
 
+# Add these global variables at the top with other constants
+CAPTURE_ACTIVE = False
+PACKET_QUEUE = queue.Queue()
+MONITORING_RESULTS = []
+MONITORING_LOCK = threading.Lock()
+
 @app.route('/')
 def index():
     if 'username' in session:
@@ -69,51 +79,68 @@ def upload_dataset():
     # Ensure this route redirects to process_logs
     return redirect(url_for('process_logs'))
 
-@app.route('/process_logs')
+@app.route('/process_logs', methods=['GET', 'POST'])
 def process_logs():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    filepath = r'C:\ZeekLogs\logs.csv'
-    if not os.path.exists(filepath):
-        # If the file doesn't exist, show an empty results page without errors
-        print("Log file not found at the specified path.")
-        flash("Log file not found. Please ensure the file exists at the specified path.")
-        return render_template('results.html', username=session['username'], results=None)
-
-    try:
-        # Automatically process the file
-        print(f"Processing log file: {filepath}")
-        results = predict_attack(filepath)
+    if request.method == 'POST':
+        # Check if a file was uploaded
+        if 'file' not in request.files:
+            flash('No file uploaded')
+            return redirect(url_for('upload'))
         
-        if not results:
-            if classification_model and label_encoder:
-                print("Falling back to ML model processing")
-                results = process_with_ml_model(filepath)
-            else:
-                print("ML model not available, using direct processing")
-                results = process_csv_directly(filepath)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected')
+            return redirect(url_for('upload'))
         
-        # Calculate summary counts
-        malicious_count = sum(1 for ip in results if ip['risk_level'] == 'High Risk')
-        suspicious_count = sum(1 for ip in results if ip['risk_level'] == 'Suspicious')
-        benign_count = sum(1 for ip in results if ip['risk_level'] == 'Normal')
+        if not file.filename.endswith('.csv'):
+            flash('Only CSV files are allowed')
+            return redirect(url_for('upload'))
         
-        print(f"Rendering results with {len(results)} IPs found")
-        print(f"Counts: {malicious_count} malicious, {suspicious_count} suspicious, {benign_count} benign")
-        
-        return render_template('results.html', 
-                              username=session['username'], 
-                              results=results,
-                              malicious_count=malicious_count,
-                              suspicious_count=suspicious_count,
-                              benign_count=benign_count)
-    except Exception as e:
-        # If any error occurs, show an empty results page without displaying the error
-        print(f"Error processing logs: {e}")
-        traceback.print_exc()
-        flash("An error occurred while processing the logs.")
-        return render_template('results.html', username=session['username'], results=None)
+        try:
+            # Save the uploaded file
+            filepath = os.path.join('uploads', 'temp.csv')
+            file.save(filepath)
+            
+            # Process the file
+            results = predict_attack(filepath)
+            
+            if not results:
+                if classification_model and label_encoder:
+                    print("Falling back to ML model processing")
+                    results = process_with_ml_model(filepath)
+                else:
+                    print("ML model not available, using direct processing")
+                    results = process_csv_directly(filepath)
+            
+            # Calculate summary counts
+            malicious_count = sum(1 for ip in results if ip['risk_level'] == 'High Risk')
+            suspicious_count = sum(1 for ip in results if ip['risk_level'] == 'Suspicious')
+            benign_count = sum(1 for ip in results if ip['risk_level'] == 'Normal')
+            
+            # Clean up the temporary file
+            try:
+                os.remove(filepath)
+            except:
+                pass
+            
+            return render_template('results.html',
+                                username=session['username'],
+                                results=results,
+                                malicious_count=malicious_count,
+                                suspicious_count=suspicious_count,
+                                benign_count=benign_count)
+            
+        except Exception as e:
+            print(f"Error processing uploaded file: {e}")
+            traceback.print_exc()
+            flash("Error processing the uploaded file")
+            return redirect(url_for('upload'))
+    
+    # If GET request or no file uploaded, redirect to upload page
+    return redirect(url_for('upload'))
 
 def predict_attack(filepath):
     """Process the CSV file using the improved predict function"""
@@ -956,6 +983,178 @@ def save_blocked_ips(blocked_ips):
             json.dump(blocked_ips, f, indent=2)
     except Exception as e:
         print(f"Error saving blocked IPs file: {e}")
+
+def capture_packets():
+    """Capture packets using tshark and process them"""
+    global CAPTURE_ACTIVE
+    
+    # Command to run tshark
+    tshark_cmd = [
+        'tshark',
+        '-i', '1',  # Interface number (change as needed)
+        '-T', 'fields',
+        '-E', 'separator=,',
+        '-e', 'ip.src',
+        '-e', 'ip.dst',
+        '-e', 'tcp.srcport',
+        '-e', 'tcp.dstport',
+        '-e', 'udp.srcport',
+        '-e', 'udp.dstport',
+        '-e', 'icmp.type',
+        '-e', '_ws.col.Protocol'
+    ]
+    
+    try:
+        process = subprocess.Popen(tshark_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        # Dictionary to store packet counts
+        packet_counts = defaultdict(lambda: {
+            'TCP_Packet_Count': 0,
+            'UDP_Packet_Count': 0,
+            'ICMP_Packet_Count': 0,
+            'last_update': time.time()
+        })
+        
+        while CAPTURE_ACTIVE:
+            line = process.stdout.readline()
+            if not line:
+                continue
+                
+            fields = line.strip().split(',')
+            if len(fields) < 8:
+                continue
+                
+            src_ip, dst_ip, tcp_sport, tcp_dport, udp_sport, udp_dport, icmp_type, protocol = fields
+            
+            # Process source IP
+            if src_ip:
+                if protocol == 'TCP':
+                    packet_counts[src_ip]['TCP_Packet_Count'] += 1
+                elif protocol == 'UDP':
+                    packet_counts[src_ip]['UDP_Packet_Count'] += 1
+                elif protocol == 'ICMP':
+                    packet_counts[src_ip]['ICMP_Packet_Count'] += 1
+                
+                # Check if 30 seconds have passed for this IP
+                current_time = time.time()
+                if current_time - packet_counts[src_ip]['last_update'] >= 30:
+                    data = {
+                        'IP': src_ip,
+                        'TCP_Packet_Count': packet_counts[src_ip]['TCP_Packet_Count'],
+                        'UDP_Packet_Count': packet_counts[src_ip]['UDP_Packet_Count'],
+                        'ICMP_Packet_Count': packet_counts[src_ip]['ICMP_Packet_Count'],
+                        'Subnet': 0,  # Default value
+                        'Amplification_Factor': max(1.0, 
+                            packet_counts[src_ip]['TCP_Packet_Count'] / 100.0 +
+                            packet_counts[src_ip]['UDP_Packet_Count'] / 50.0 +
+                            packet_counts[src_ip]['ICMP_Packet_Count'] / 10.0
+                        )
+                    }
+                    
+                    # Reset counters
+                    packet_counts[src_ip] = {
+                        'TCP_Packet_Count': 0,
+                        'UDP_Packet_Count': 0,
+                        'ICMP_Packet_Count': 0,
+                        'last_update': current_time
+                    }
+                    
+                    # Put data in queue for processing
+                    PACKET_QUEUE.put(data)
+        
+        process.terminate()
+        
+    except Exception as e:
+        print(f"Error in capture_packets: {e}")
+        traceback.print_exc()
+        CAPTURE_ACTIVE = False
+
+def process_packet_data():
+    """Process packet data from queue and update monitoring results"""
+    global MONITORING_RESULTS
+    
+    while CAPTURE_ACTIVE:
+        try:
+            # Get data from queue
+            data = PACKET_QUEUE.get(timeout=1)
+            
+            # Create DataFrame with single row
+            df = pd.DataFrame([data])
+            
+            # Process with ML model
+            results = process_with_ml_model(df)
+            
+            if results:
+                # Update monitoring results
+                with MONITORING_LOCK:
+                    # Remove old entry for this IP if exists
+                    MONITORING_RESULTS = [r for r in MONITORING_RESULTS if r['address'] != data['IP']]
+                    # Add new result
+                    MONITORING_RESULTS.extend(results)
+                    # Sort results
+                    MONITORING_RESULTS.sort(key=lambda x: {"High Risk": 0, "Suspicious": 1, "Normal": 2}[x["risk_level"]])
+        
+        except queue.Empty:
+            continue
+        except Exception as e:
+            print(f"Error processing packet data: {e}")
+            traceback.print_exc()
+
+@app.route('/monitoring')
+def monitoring():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    return render_template('monitoring.html', username=session['username'])
+
+@app.route('/start_monitoring', methods=['POST'])
+def start_monitoring():
+    global CAPTURE_ACTIVE
+    
+    if CAPTURE_ACTIVE:
+        return jsonify({'success': False, 'message': 'Monitoring already active'})
+    
+    try:
+        CAPTURE_ACTIVE = True
+        
+        # Start capture thread
+        capture_thread = threading.Thread(target=capture_packets)
+        capture_thread.daemon = True
+        capture_thread.start()
+        
+        # Start processing thread
+        process_thread = threading.Thread(target=process_packet_data)
+        process_thread.daemon = True
+        process_thread.start()
+        
+        return jsonify({'success': True, 'message': 'Monitoring started'})
+    
+    except Exception as e:
+        CAPTURE_ACTIVE = False
+        return jsonify({'success': False, 'message': f'Error starting monitoring: {str(e)}'})
+
+@app.route('/stop_monitoring', methods=['POST'])
+def stop_monitoring():
+    global CAPTURE_ACTIVE
+    
+    if not CAPTURE_ACTIVE:
+        return jsonify({'success': False, 'message': 'Monitoring not active'})
+    
+    CAPTURE_ACTIVE = False
+    return jsonify({'success': True, 'message': 'Monitoring stopped'})
+
+@app.route('/get_monitoring_results')
+def get_monitoring_results():
+    with MONITORING_LOCK:
+        return jsonify({
+            'results': MONITORING_RESULTS,
+            'is_active': CAPTURE_ACTIVE
+        })
+
+@app.route('/upload')
+def upload():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    return render_template('upload.html', username=session['username'])
 
 if __name__ == '__main__':
     # Make sure uploads directory exists

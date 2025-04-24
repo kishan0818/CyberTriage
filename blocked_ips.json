@@ -5,5 +5,12 @@
     "date_blocked": "2025-04-24 21:28:03",
     "blocked_by": "admin",
     "reason": "Suspicious activity detected"
+  },
+  {
+    "ip": "142.250.183.238",
+    "rule_name": "Block-IP-142-250-183-238",
+    "date_blocked": "2025-04-24 23:06:07",
+    "blocked_by": "admin",
+    "reason": "Suspicious activity detected"
   }
 ]

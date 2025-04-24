@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Monitoring | DDoS Shield</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>DDoS Shield</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li>
+                        <a href="/upload"><i class="fas fa-upload"></i> Upload Dataset</a>
+                    </li>
+                    <li class="active">
+                        <a href="/monitoring"><i class="fas fa-chart-line"></i> Real-time Monitoring</a>
+                    </li>
+                    <li>
+                        <a href="/blocked_ips"><i class="fas fa-ban"></i> Blocked IPs</a>
+                    </li>
+                    <li>
+                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                    </li>
+                    <li class="logout">
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1>Real-time Network Monitoring</h1>
+                <div class="user-info">
+                    <span>Welcome, {{ username }}</span>
+                    <i class="fas fa-user-circle"></i>
+                </div>
+            </div>
+            <div class="content-container">
+                <div class="monitoring-controls">
+                    <button id="startMonitoring" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Start Monitoring
+                    </button>
+                    <button id="stopMonitoring" class="btn btn-danger" style="display: none;">
+                        <i class="fas fa-stop"></i> Stop Monitoring
+                    </button>
+                    <button id="pauseMonitoring" class="btn btn-warning" style="display: none;">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <span id="monitoringStatus" class="status-badge">Inactive</span>
+                </div>
+                
+                <div class="monitoring-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon danger">
+                            <i class="fas fa-skull-crossbones"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="highRiskCount">0</h3>
+                            <p>High Risk</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="suspiciousCount">0</h3>
+                            <p>Suspicious</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="normalCount">0</h3>
+                            <p>Normal</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="results-section">
+                    <div class="results-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Risk Level</th>
+                                    <th>Attack Type</th>
+                                    <th>Confidence</th>
+                                    <th>Traffic Volume</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitoringResults">
+                                <!-- Results will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle toast-icon success"></i>
+            <div class="toast-message">Operation successful</div>
+        </div>
+    </div>
+
+    <script>
+        let isMonitoring = false;
+        let isPaused = false;
+        let updateInterval;
+        
+        // Start monitoring
+        document.getElementById('startMonitoring').addEventListener('click', function() {
+            fetch('/start_monitoring', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        isMonitoring = true;
+                        updateUI();
+                        startUpdates();
+                        showToast('Monitoring started', 'success');
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error starting monitoring', 'error');
+                    console.error('Error:', error);
+                });
+        });
+        
+        // Stop monitoring
+        document.getElementById('stopMonitoring').addEventListener('click', function() {
+            fetch('/stop_monitoring', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        isMonitoring = false;
+                        isPaused = false;
+                        updateUI();
+                        stopUpdates();
+                        showToast('Monitoring stopped', 'success');
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error stopping monitoring', 'error');
+                    console.error('Error:', error);
+                });
+        });
+        
+        // Pause/Resume monitoring
+        document.getElementById('pauseMonitoring').addEventListener('click', function() {
+            isPaused = !isPaused;
+            updateUI();
+            if (isPaused) {
+                stopUpdates();
+                showToast('Monitoring paused', 'success');
+            } else {
+                startUpdates();
+                showToast('Monitoring resumed', 'success');
+            }
+        });
+        
+        function updateUI() {
+            const startBtn = document.getElementById('startMonitoring');
+            const stopBtn = document.getElementById('stopMonitoring');
+            const pauseBtn = document.getElementById('pauseMonitoring');
+            const status = document.getElementById('monitoringStatus');
+            
+            startBtn.style.display = isMonitoring ? 'none' : 'inline-block';
+            stopBtn.style.display = isMonitoring ? 'inline-block' : 'none';
+            pauseBtn.style.display = isMonitoring ? 'inline-block' : 'none';
+            
+            if (!isMonitoring) {
+                status.textContent = 'Inactive';
+                status.className = 'status-badge inactive';
+            } else if (isPaused) {
+                status.textContent = 'Paused';
+                status.className = 'status-badge paused';
+                pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+            } else {
+                status.textContent = 'Active';
+                status.className = 'status-badge active';
+                pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            }
+        }
+        
+        function startUpdates() {
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(updateResults, 1000);
+        }
+        
+        function stopUpdates() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+        
+        function updateResults() {
+            if (isPaused) return;
+            
+            fetch('/get_monitoring_results')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.is_active) {
+                        isMonitoring = false;
+                        updateUI();
+                        stopUpdates();
+                        return;
+                    }
+                    
+                    const results = data.results;
+                    const tbody = document.getElementById('monitoringResults');
+                    tbody.innerHTML = '';
+                    
+                    let highRisk = 0;
+                    let suspicious = 0;
+                    let normal = 0;
+                    
+                    results.forEach(result => {
+                        const row = document.createElement('tr');
+                        row.className = result.risk_class;
+                        
+                        // Count by risk level
+                        if (result.risk_level === 'High Risk') highRisk++;
+                        else if (result.risk_level === 'Suspicious') suspicious++;
+                        else normal++;
+                        
+                        row.innerHTML = `
+                            <td>${result.address}</td>
+                            <td><span class="badge ${result.risk_class}">${result.risk_level}</span></td>
+                            <td><span class="badge ${result.risk_class}">${result.attack_type}</span></td>
+                            <td>${result.confidence}%</td>
+                            <td>${result.traffic} req/s</td>
+                            <td>
+                                <button class="btn-icon block-ip" data-ip="${result.address}">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                <button class="btn-icon view-details" data-ip="${result.address}">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        tbody.appendChild(row);
+                    });
+                    
+                    // Update stats
+                    document.getElementById('highRiskCount').textContent = highRisk;
+                    document.getElementById('suspiciousCount').textContent = suspicious;
+                    document.getElementById('normalCount').textContent = normal;
+                    
+                    // Add event listeners for block buttons
+                    document.querySelectorAll('.block-ip').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const ip = this.getAttribute('data-ip');
+                            if (confirm(`Are you sure you want to block IP ${ip}?`)) {
+                                blockIP(ip, this);
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error updating results:', error);
+                });
+        }
+        
+        function blockIP(ip, button) {
+            const formData = new FormData();
+            formData.append('ip', ip);
+            formData.append('reason', 'Blocked from real-time monitoring');
+            
+            fetch('/block_ip', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    showToast(`IP ${ip} has been blocked`, 'success');
+                } else {
+                    showToast(data.message || 'Error blocking IP', 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Error blocking IP', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastIcon = toast.querySelector('.toast-icon');
+            const toastMessage = toast.querySelector('.toast-message');
+            
+            toastMessage.textContent = message;
+            toastIcon.className = `fas toast-icon ${type}`;
+            toastIcon.classList.add(type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle');
+            
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+
+    <style>
+        .monitoring-controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-badge.active {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .status-badge.inactive {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .status-badge.paused {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .monitoring-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            flex: 1;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        
+        .stat-icon.danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .stat-icon.warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .stat-icon.success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .stat-info h3 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .stat-info p {
+            margin: 5px 0 0;
+            color: #666;
+        }
+    </style>
+</body>
+</html> 
