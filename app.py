@@ -864,15 +864,30 @@ def unblock_ip():
         if not rule_name:
             return json.dumps({'success': False, 'message': 'IP not found in blocked list'}), 400
         
-        # Create PowerShell script for removal
+        # Create PowerShell script for removal with better error handling and logging
         ps_script = f"""
 $ErrorActionPreference = 'Stop'
+$VerbosePreference = 'Continue'
+
 try {{
-    Remove-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction Stop
-    Write-Output "Rule removed successfully"
-    exit 0
+    # Check if rule exists first
+    $rule = Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue
+    
+    if ($rule) {{
+        Write-Verbose "Found rule {rule_name}, attempting to remove..."
+        Remove-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction Stop
+        Write-Output "SUCCESS: Rule removed successfully"
+        exit 0
+    }} else {{
+        Write-Output "SUCCESS: Rule not found (already removed)"
+        exit 0
+    }}
 }} catch {{
-    Write-Error $_.Exception.Message
+    $errorMessage = $_.Exception.Message
+    Write-Error "ERROR: $errorMessage"
+    if ($errorMessage -like "*Access is denied*") {{
+        Write-Error "ADMIN_REQUIRED"
+    }}
     exit 1
 }}
 """
@@ -885,7 +900,7 @@ try {{
             'powershell.exe',
             '-ExecutionPolicy', 'Bypass',
             '-Command',
-            f'Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File {script_path}" -Wait'
+            f'Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoProfile -File {script_path}" -Wait -WindowStyle Hidden'
         ]
         
         result = subprocess.run(command, capture_output=True, text=True)
@@ -896,24 +911,32 @@ try {{
         except:
             pass
         
-        # Verify the rule was removed
+        # Check if the rule still exists
         verify_command = [
             'powershell.exe',
             '-Command',
-            f'Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue'
+            f'(Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue) -eq $null'
         ]
         
         verify_result = subprocess.run(verify_command, capture_output=True, text=True)
         
-        if verify_result.returncode == 0 and not verify_result.stdout.strip():
+        # If the verification command returns True (as text), it means the rule is gone
+        if verify_result.stdout.strip().lower() == 'true':
             # Rule was successfully removed, update blocked IPs file
             save_blocked_ips(blocked_ips)
             return json.dumps({'success': True, 'message': f'IP {ip_address} has been unblocked'}), 200
         else:
-            return json.dumps({
-                'success': False,
-                'message': 'Failed to verify firewall rule removal. Please try running the application as administrator.'
-            }), 500
+            # Check if it's an admin rights issue
+            if "ADMIN_REQUIRED" in result.stderr:
+                return json.dumps({
+                    'success': False,
+                    'message': 'Administrator privileges required. Please run the application as administrator.'
+                }), 403
+            else:
+                return json.dumps({
+                    'success': False,
+                    'message': 'Failed to remove firewall rule. Please check Windows Firewall settings or try again.'
+                }), 500
     
     except Exception as e:
         print(f"Error in unblock_ip: {e}")
@@ -921,6 +944,8 @@ try {{
         error_msg = str(e)
         if "Access is denied" in error_msg:
             error_msg = "Access denied. Please run the application as administrator."
+        elif "ADMIN_REQUIRED" in error_msg:
+            error_msg = "Administrator privileges required. Please run the application as administrator."
         return json.dumps({'success': False, 'message': f'Error: {error_msg}'}), 500
 
 @app.route('/blocked_ips')
