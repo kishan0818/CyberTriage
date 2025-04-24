@@ -1,8 +1,8 @@
 [
   {
-    "ip": "172.16.114.32",
-    "rule_name": "Block-IP-172-16-114-32",
-    "date_blocked": "2025-04-24 20:35:51",
+    "ip": "20.210.9.245",
+    "rule_name": "Block-IP-20-210-9-245",
+    "date_blocked": "2025-04-24 21:28:03",
     "blocked_by": "admin",
     "reason": "Suspicious activity detected"
   }

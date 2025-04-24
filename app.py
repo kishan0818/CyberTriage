@@ -44,7 +44,7 @@ except Exception as e:
 @app.route('/')
 def index():
     if 'username' in session:
-        return redirect(url_for('upload'))
+        return redirect(url_for('process_logs'))
     return render_template('index.html')
 
 @app.route('/login', methods=['POST'])
@@ -54,7 +54,7 @@ def login():
     
     if username in USERS and USERS[username] == password:
         session['username'] = username
-        return redirect(url_for('upload'))
+        return redirect(url_for('process_logs'))
     else:
         flash('Invalid username or password')
         return redirect(url_for('index'))
@@ -64,80 +64,56 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('index'))
 
-@app.route('/upload')
-def upload():
-    if 'username' not in session:
-        return redirect(url_for('index'))
-    return render_template('results.html', username=session['username'], results=None)
+@app.route('/upload_dataset')
+def upload_dataset():
+    # Ensure this route redirects to process_logs
+    return redirect(url_for('process_logs'))
 
-@app.route('/upload', methods=['POST'])
-def process_upload():
+@app.route('/process_logs')
+def process_logs():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    print(f"Processing upload. Request files: {request.files}")
-    
-    if 'file' not in request.files:
-        print("No file part in request")
-        flash('No file part')
-        return redirect(url_for('upload'))
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        print("No selected file")
-        flash('No selected file')
-        return redirect(url_for('upload'))
-    
-    if file and file.filename.endswith('.csv'):
-        # Create uploads directory if it doesn't exist
-        os.makedirs('uploads', exist_ok=True)
+    filepath = r'C:\ZeekLogs\logs.csv'
+    if not os.path.exists(filepath):
+        # If the file doesn't exist, show an empty results page without errors
+        print("Log file not found at the specified path.")
+        flash("Log file not found. Please ensure the file exists at the specified path.")
+        return render_template('results.html', username=session['username'], results=None)
+
+    try:
+        # Automatically process the file
+        print(f"Processing log file: {filepath}")
+        results = predict_attack(filepath)
         
-        # Save file temporarily
-        filepath = os.path.join('uploads', file.filename)
-        print(f"Saving file to {filepath}")
-        file.save(filepath)
+        if not results:
+            if classification_model and label_encoder:
+                print("Falling back to ML model processing")
+                results = process_with_ml_model(filepath)
+            else:
+                print("ML model not available, using direct processing")
+                results = process_csv_directly(filepath)
         
-        try:
-            # First try to process with improved predict function
-            print("Processing CSV file with improved predict function")
-            results = predict_attack(filepath)
-            
-            if not results:
-                # If prediction fails or returns empty, try with ML model
-                if classification_model and label_encoder:
-                    print("Falling back to ML model processing")
-                    results = process_with_ml_model(filepath)
-                else:
-                    print("ML model not available, using direct processing")
-                    results = process_csv_directly(filepath)
-            
-            # Calculate summary counts
-            malicious_count = sum(1 for ip in results if ip['risk_level'] == 'High Risk')
-            suspicious_count = sum(1 for ip in results if ip['risk_level'] == 'Suspicious')
-            benign_count = sum(1 for ip in results if ip['risk_level'] == 'Normal')
-            
-            print(f"Rendering results with {len(results)} IPs found")
-            print(f"Counts: {malicious_count} malicious, {suspicious_count} suspicious, {benign_count} benign")
-            
-            # Clean up
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            
-            return render_template('results.html', 
-                                  username=session['username'], 
-                                  results=results,
-                                  malicious_count=malicious_count,
-                                  suspicious_count=suspicious_count,
-                                  benign_count=benign_count)
-        except Exception as e:
-            print(f"Error processing upload: {e}")
-            traceback.print_exc()
-            flash(f"Error processing file: {str(e)}")
-            return redirect(url_for('upload'))
-    else:
-        flash('File must be a CSV')
-        return redirect(url_for('upload'))
+        # Calculate summary counts
+        malicious_count = sum(1 for ip in results if ip['risk_level'] == 'High Risk')
+        suspicious_count = sum(1 for ip in results if ip['risk_level'] == 'Suspicious')
+        benign_count = sum(1 for ip in results if ip['risk_level'] == 'Normal')
+        
+        print(f"Rendering results with {len(results)} IPs found")
+        print(f"Counts: {malicious_count} malicious, {suspicious_count} suspicious, {benign_count} benign")
+        
+        return render_template('results.html', 
+                              username=session['username'], 
+                              results=results,
+                              malicious_count=malicious_count,
+                              suspicious_count=suspicious_count,
+                              benign_count=benign_count)
+    except Exception as e:
+        # If any error occurs, show an empty results page without displaying the error
+        print(f"Error processing logs: {e}")
+        traceback.print_exc()
+        flash("An error occurred while processing the logs.")
+        return render_template('results.html', username=session['username'], results=None)
 
 def predict_attack(filepath):
     """Process the CSV file using the improved predict function"""
@@ -329,7 +305,7 @@ def process_with_ml_model(filepath):
         for col in df.columns:
             # Check first value if it looks like an IP address
             if len(df) > 0:
-                val = str(df[col].iloc[0])
+                val = str(df[col].iloc(0))
                 if '.' in val and sum(c.isdigit() for c in val) > 3:
                     ip_column = col
                     print(f"Guessing {col} as IP column based on data pattern")
@@ -545,7 +521,7 @@ def process_csv_directly(filepath):
         for col in df.columns:
             # Check first value if it looks like an IP address
             if len(df) > 0:
-                val = str(df[col].iloc[0])
+                val = str(df[col].iloc(0))
                 if '.' in val and sum(c.isdigit() for c in val) > 3:
                     ip_column = col
                     print(f"Guessing {col} as IP column based on data pattern")
