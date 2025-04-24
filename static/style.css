@@ -503,3 +503,61 @@ tr.warning {
         justify-content: space-between;
     }
 }
+
+/* Blocked IPs Page Styles */
+.blocked-ips-section {
+    padding: 20px;
+}
+
+.unblock-ip {
+    color: #28a745;
+}
+
+.unblock-ip:hover {
+    color: #218838;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Toast notification style */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 12px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    max-width: 300px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+}
+
+.toast-icon {
+    margin-right: 12px;
+    font-size: 1.2rem;
+}
+
+.toast-icon.success {
+    color: #28a745;
+}
+
+.toast-icon.error {
+    color: #dc3545;
+}
+
+.toast-message {
+    font-size: 14px;
+}

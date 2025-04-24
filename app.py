@@ -6,6 +6,9 @@ import random
 import traceback
 import joblib  # For loading ML models
 import ipaddress  # For subnet extraction
+import subprocess
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a random secure key
@@ -19,6 +22,7 @@ USERS = {
 # Path definitions
 MODEL_PATH = 'models'  # Update this to your model directory
 TRAIN_DATA_PATH = 'ddos_attack_dataset.csv'  # Path to training data for column alignment
+BLOCKED_IPS_FILE = 'blocked_ips.json'
 
 # Load ML models
 try:
@@ -743,6 +747,214 @@ def generate_sample_results():
     results.sort(key=lambda x: {"High Risk": 0, "Suspicious": 1, "Normal": 2}[x["risk_level"]])
     
     return results
+
+@app.route('/block_ip', methods=['POST'])
+def block_ip():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    
+    ip_address = request.form.get('ip')
+    if not ip_address:
+        return json.dumps({'success': False, 'message': 'No IP address provided'}), 400
+    
+    try:
+        # Check if the IP is already blocked
+        blocked_ips = load_blocked_ips()
+        if any(entry['ip'] == ip_address for entry in blocked_ips):
+            return json.dumps({'success': False, 'message': 'IP is already blocked'}), 400
+        
+        # Create Windows Firewall rule with elevated privileges
+        rule_name = f"Block-IP-{ip_address.replace('.', '-')}"
+        
+        # Create a PowerShell script file
+        ps_script = f"""
+$ErrorActionPreference = 'Stop'
+try {{
+    # Check if rule already exists
+    $existingRule = Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue
+    if ($existingRule) {{
+        Write-Output "Rule already exists"
+        exit 0
+    }}
+    
+    # Create new rule
+    New-NetFirewallRule -DisplayName "{rule_name}" -Direction Inbound -Action Block -RemoteAddress {ip_address} -Profile Any -Enabled True
+    Write-Output "Rule created successfully"
+    exit 0
+}} catch {{
+    Write-Error $_.Exception.Message
+    exit 1
+}}
+"""
+        script_path = os.path.join(os.getcwd(), 'block_ip.ps1')
+        with open(script_path, 'w') as f:
+            f.write(ps_script)
+        
+        # Run PowerShell script with elevated privileges using runas
+        command = [
+            'powershell.exe',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command',
+            f'Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File {script_path}" -Wait'
+        ]
+        
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        # Clean up the script file
+        try:
+            os.remove(script_path)
+        except:
+            pass
+        
+        # Check if the rule was created successfully by trying to get it
+        verify_command = [
+            'powershell.exe',
+            '-Command',
+            f'Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue'
+        ]
+        
+        verify_result = subprocess.run(verify_command, capture_output=True, text=True)
+        
+        if verify_result.returncode == 0 and verify_result.stdout.strip():
+            # Rule exists, save to blocked IPs file
+            blocked_ips.append({
+                'ip': ip_address,
+                'rule_name': rule_name,
+                'date_blocked': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'blocked_by': session['username'],
+                'reason': request.form.get('reason', 'Manual block')
+            })
+            save_blocked_ips(blocked_ips)
+            
+            return json.dumps({'success': True, 'message': f'IP {ip_address} has been blocked'}), 200
+        else:
+            return json.dumps({
+                'success': False, 
+                'message': 'Failed to verify firewall rule creation. Please try running the application as administrator.'
+            }), 500
+    
+    except Exception as e:
+        print(f"Error in block_ip: {e}")
+        traceback.print_exc()
+        error_msg = str(e)
+        if "Access is denied" in error_msg:
+            error_msg = "Access denied. Please run the application as administrator."
+        return json.dumps({'success': False, 'message': f'Error: {error_msg}'}), 500
+
+@app.route('/unblock_ip', methods=['POST'])
+def unblock_ip():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    
+    ip_address = request.form.get('ip')
+    if not ip_address:
+        return json.dumps({'success': False, 'message': 'No IP address provided'}), 400
+    
+    try:
+        # Find the rule name from our records
+        blocked_ips = load_blocked_ips()
+        rule_name = None
+        
+        for i, entry in enumerate(blocked_ips):
+            if entry['ip'] == ip_address:
+                rule_name = entry['rule_name']
+                blocked_ips.pop(i)
+                break
+        
+        if not rule_name:
+            return json.dumps({'success': False, 'message': 'IP not found in blocked list'}), 400
+        
+        # Create PowerShell script for removal
+        ps_script = f"""
+$ErrorActionPreference = 'Stop'
+try {{
+    Remove-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction Stop
+    Write-Output "Rule removed successfully"
+    exit 0
+}} catch {{
+    Write-Error $_.Exception.Message
+    exit 1
+}}
+"""
+        script_path = os.path.join(os.getcwd(), 'unblock_ip.ps1')
+        with open(script_path, 'w') as f:
+            f.write(ps_script)
+        
+        # Run PowerShell script with elevated privileges
+        command = [
+            'powershell.exe',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command',
+            f'Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File {script_path}" -Wait'
+        ]
+        
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        # Clean up the script file
+        try:
+            os.remove(script_path)
+        except:
+            pass
+        
+        # Verify the rule was removed
+        verify_command = [
+            'powershell.exe',
+            '-Command',
+            f'Get-NetFirewallRule -DisplayName "{rule_name}" -ErrorAction SilentlyContinue'
+        ]
+        
+        verify_result = subprocess.run(verify_command, capture_output=True, text=True)
+        
+        if verify_result.returncode == 0 and not verify_result.stdout.strip():
+            # Rule was successfully removed, update blocked IPs file
+            save_blocked_ips(blocked_ips)
+            return json.dumps({'success': True, 'message': f'IP {ip_address} has been unblocked'}), 200
+        else:
+            return json.dumps({
+                'success': False,
+                'message': 'Failed to verify firewall rule removal. Please try running the application as administrator.'
+            }), 500
+    
+    except Exception as e:
+        print(f"Error in unblock_ip: {e}")
+        traceback.print_exc()
+        error_msg = str(e)
+        if "Access is denied" in error_msg:
+            error_msg = "Access denied. Please run the application as administrator."
+        return json.dumps({'success': False, 'message': f'Error: {error_msg}'}), 500
+
+@app.route('/blocked_ips')
+def blocked_ips_page():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    
+    blocked_ips = load_blocked_ips()
+    return render_template('blocked_ips.html', username=session['username'], blocked_ips=blocked_ips)
+
+def load_blocked_ips():
+    """Load the list of blocked IPs from JSON file"""
+    if os.path.exists(BLOCKED_IPS_FILE):
+        try:
+            with open(BLOCKED_IPS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading blocked IPs file: {e}")
+            # Create an empty file on error
+            with open(BLOCKED_IPS_FILE, 'w') as f:
+                json.dump([], f)
+    else:
+        # Create the file if it doesn't exist
+        with open(BLOCKED_IPS_FILE, 'w') as f:
+            json.dump([], f)
+    return []
+
+def save_blocked_ips(blocked_ips):
+    """Save the list of blocked IPs to JSON file"""
+    try:
+        with open(BLOCKED_IPS_FILE, 'w') as f:
+            json.dump(blocked_ips, f, indent=2)
+    except Exception as e:
+        print(f"Error saving blocked IPs file: {e}")
 
 if __name__ == '__main__':
     # Make sure uploads directory exists

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocked IPs | DDoS Shield</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>DDoS Shield</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li>
+                        <a href="/upload"><i class="fas fa-upload"></i> Upload Dataset</a>
+                    </li>
+                    <li>
+                        <a href="#"><i class="fas fa-chart-line"></i> Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="#"><i class="fas fa-history"></i> History</a>
+                    </li>
+                    <li class="active">
+                        <a href="/blocked_ips"><i class="fas fa-ban"></i> Blocked IPs</a>
+                    </li>
+                    <li>
+                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                    </li>
+                    <li class="logout">
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1>Blocked IP Addresses</h1>
+                <div class="user-info">
+                    <span>Welcome, {{ username }}</span>
+                    <i class="fas fa-user-circle"></i>
+                </div>
+            </div>
+            <div class="content-container">
+                <div class="blocked-ips-section">
+                    <div class="results-header">
+                        <h2><i class="fas fa-ban"></i> Firewall Blocked IPs</h2>
+                        <div class="actions">
+                            <button class="btn btn-secondary" id="exportBlockedBtn">
+                                <i class="fas fa-download"></i> Export List
+                            </button>
+                        </div>
+                    </div>
+                    {% if blocked_ips %}
+                    <div class="results-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Date Blocked</th>
+                                    <th>Blocked By</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ip in blocked_ips %}
+                                <tr>
+                                    <td>{{ ip.ip }}</td>
+                                    <td>{{ ip.date_blocked }}</td>
+                                    <td>{{ ip.blocked_by }}</td>
+                                    <td>{{ ip.reason }}</td>
+                                    <td>
+                                        <button class="btn-icon unblock-ip" data-ip="{{ ip.ip }}">
+                                            <i class="fas fa-unlock"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-shield-alt empty-icon"></i>
+                        <h3>No Blocked IPs</h3>
+                        <p>There are currently no IP addresses blocked by the firewall.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle toast-icon success"></i>
+            <div class="toast-message">Operation successful</div>
+        </div>
+    </div>
+
+    <script>
+        // Export functionality
+        document.getElementById('exportBlockedBtn')?.addEventListener('click', function() {
+            const table = document.querySelector('.results-table table');
+            if (!table) return;
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    // Get text content and clean it up
+                    let text = cols[j].textContent.trim();
+                    if (j === cols.length - 1) {
+                        // Skip action buttons column
+                        continue;
+                    }
+                    // Add quotes for CSV
+                    row.push('"' + text.replace(/"/g, '""') + '"');
+                }
+                csv.push(row.join(','));
+            }
+            
+            const csvContent = "data:text/csv;charset=utf-8," + csv.join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "blocked_ips.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        
+        // Unblock functionality
+        document.querySelectorAll('.unblock-ip').forEach(button => {
+            button.addEventListener('click', function() {
+                const ip = this.getAttribute('data-ip');
+                if (confirm(`Are you sure you want to unblock IP ${ip}?`)) {
+                    // Send request to unblock
+                    const formData = new FormData();
+                    formData.append('ip', ip);
+                    
+                    fetch('/unblock_ip', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(data.message, 'success');
+                            // Remove the row from the table
+                            this.closest('tr').remove();
+                            // If no more rows, show empty state
+                            if (document.querySelectorAll('.results-table tbody tr').length === 0) {
+                                document.querySelector('.results-table').remove();
+                                const emptyState = document.createElement('div');
+                                emptyState.className = 'empty-state';
+                                emptyState.innerHTML = `
+                                    <i class="fas fa-shield-alt empty-icon"></i>
+                                    <h3>No Blocked IPs</h3>
+                                    <p>There are currently no IP addresses blocked by the firewall.</p>
+                                `;
+                                document.querySelector('.blocked-ips-section').appendChild(emptyState);
+                            }
+                        } else {
+                            showToast(data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('Error unblocking IP', 'error');
+                    });
+                }
+            });
+        });
+        
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastIcon = toast.querySelector('.toast-icon');
+            const toastMessage = toast.querySelector('.toast-message');
+            
+            // Set message
+            toastMessage.textContent = message;
+            
+            // Set icon and style based on type
+            toastIcon.className = 'fas toast-icon';
+            if (type === 'success') {
+                toastIcon.classList.add('fa-check-circle', 'success');
+            } else {
+                toastIcon.classList.add('fa-exclamation-circle', 'error');
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+
+    <style>
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #fff;
+            border-radius: 4px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast-content {
+            display: flex;
+            align-items: center;
+        }
+        
+        .toast-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        
+        .toast-icon.success {
+            color: #28a745;
+        }
+        
+        .toast-icon.error {
+            color: #dc3545;
+        }
+        
+        .toast-message {
+            font-size: 14px;
+        }
+    </style>
+</body>
+</html> 

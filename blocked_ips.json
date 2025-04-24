@@ -1,0 +1,16 @@
+[
+  {
+    "ip": "142.250.183.238",
+    "rule_name": "Block-IP-142-250-183-238",
+    "date_blocked": "2025-04-24 20:19:58",
+    "blocked_by": "admin",
+    "reason": "Suspicious activity detected"
+  },
+  {
+    "ip": "107.178.242.165",
+    "rule_name": "Block-IP-107-178-242-165",
+    "date_blocked": "2025-04-24 20:20:50",
+    "blocked_by": "admin",
+    "reason": "Suspicious activity detected"
+  }
+]

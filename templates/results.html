@@ -17,13 +17,16 @@
             <nav>
                 <ul>
                     <li class="active">
-                        <a href="#"><i class="fas fa-upload"></i> Upload Dataset</a>
+                        <a href="/upload"><i class="fas fa-upload"></i> Upload Dataset</a>
                     </li>
                     <li>
                         <a href="#"><i class="fas fa-chart-line"></i> Dashboard</a>
                     </li>
                     <li>
                         <a href="#"><i class="fas fa-history"></i> History</a>
+                    </li>
+                    <li>
+                        <a href="/blocked_ips"><i class="fas fa-ban"></i> Blocked IPs</a>
                     </li>
                     <li>
                         <a href="#"><i class="fas fa-cog"></i> Settings</a>
@@ -159,23 +162,31 @@
     </div>
 
     <!-- Modal for IP Details -->
-    <!-- <div id="ipDetailsModal" class="modal">
+    <div id="ipDetailsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>IP Address Details</h2>
-            <div id="ipDetailsContent"> -->
+            <div id="ipDetailsContent">
                 <!-- Details will be loaded here -->
-            <!-- </div>
+            </div>
             <div class="attack-info" id="attackDetails" style="display: none; margin-top: 20px; padding: 15px; border-top: 1px solid #eee;">
                 <h3>Attack Type Information</h3>
                 <div id="attackDescription"></div>
             </div>
         </div>
-    </div> -->
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle toast-icon success"></i>
+            <div class="toast-message">Operation successful</div>
+        </div>
+    </div>
 
     <script>
         // Simple script to show filename when selected
-        document.getElementById('file').addEventListener('change', function(e) {
+        document.getElementById('file')?.addEventListener('change', function(e) {
             const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
             document.querySelector('.file-info').textContent = fileName;
         });
@@ -218,12 +229,67 @@
             document.body.removeChild(link);
         });
 
-        // Add event listeners for block and view buttons
+        // Function to show toast notifications
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastIcon = toast.querySelector('.toast-icon');
+            const toastMessage = toast.querySelector('.toast-message');
+            
+            // Set message
+            toastMessage.textContent = message;
+            
+            // Set icon and style based on type
+            toastIcon.className = 'fas toast-icon';
+            if (type === 'success') {
+                toastIcon.classList.add('fa-check-circle', 'success');
+            } else {
+                toastIcon.classList.add('fa-exclamation-circle', 'error');
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Block IP functionality
         document.querySelectorAll('.block-ip').forEach(button => {
             button.addEventListener('click', function() {
                 const ip = this.getAttribute('data-ip');
-                alert(`IP ${ip} has been blocked from accessing the network.`);
-                // In a real app, this would send a request to the backend to block the IP
+                if (confirm(`Are you sure you want to block IP ${ip} using Windows Firewall?`)) {
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('ip', ip);
+                    formData.append('reason', 'Suspicious activity detected');
+                    
+                    // Send request to block IP
+                    fetch('/block_ip', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success message
+                            const row = this.closest('tr');
+                            row.style.opacity = '0.5';
+                            this.disabled = true;
+                            this.innerHTML = '<i class="fas fa-check"></i>';
+                            this.title = "IP Blocked";
+                            showToast(`IP ${ip} has been blocked using Windows Firewall`, 'success');
+                        } else {
+                            // Show error message
+                            showToast(data.message || 'Error blocking IP', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast(`Error blocking IP: ${error}`, 'error');
+                    });
+                }
             });
         });
 
@@ -243,13 +309,7 @@
             "Unusual Traffic": "Network traffic that deviates from normal patterns but doesn't clearly indicate an attack."
         };
 
-        // Add functionality for the modal
-        const modal = document.getElementById('ipDetailsModal');
-        const modalContent = document.getElementById('ipDetailsContent');
-        const attackDetails = document.getElementById('attackDetails');
-        const attackDescription = document.getElementById('attackDescription');
-        const closeBtn = document.querySelector('.close');
-
+        // Modal functionality
         document.querySelectorAll('.view-details').forEach(button => {
             button.addEventListener('click', function() {
                 const ip = this.getAttribute('data-ip');
@@ -258,6 +318,12 @@
                 const row = this.closest('tr');
                 const confidence = row.querySelector('td:nth-child(4)').textContent;
                 const traffic = row.querySelector('td:nth-child(5)').textContent;
+                
+                // Get modal elements
+                const modal = document.getElementById('ipDetailsModal');
+                const modalContent = document.getElementById('ipDetailsContent');
+                const attackDetails = document.getElementById('attackDetails');
+                const attackDescription = document.getElementById('attackDescription');
                 
                 // Create HTML for IP details
                 let detailsHTML = `
@@ -310,121 +376,174 @@
                 // Show the modal
                 modal.style.display = 'block';
                 
-                // Add event listeners for action buttons in the modal
+                // Add event listeners for the block action button in the modal
                 document.querySelector('.block-action').addEventListener('click', function() {
                     const actionIp = this.getAttribute('data-ip');
-                    alert(`IP ${actionIp} has been blocked from accessing the network.`);
-                    modal.style.display = 'none';
+                    if (confirm(`Are you sure you want to block IP ${actionIp} using Windows Firewall?`)) {
+                        const formData = new FormData();
+                        formData.append('ip', actionIp);
+                        formData.append('reason', 'Manual block from details modal');
+                        
+                        fetch('/block_ip', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Close modal
+                                modal.style.display = 'none';
+                                
+                                // Update the block button in the table
+                                document.querySelectorAll('.block-ip').forEach(btn => {
+                                    if (btn.getAttribute('data-ip') === actionIp) {
+                                        const tableRow = btn.closest('tr');
+                                        tableRow.style.opacity = '0.5';
+                                        btn.disabled = true;
+                                        btn.innerHTML = '<i class="fas fa-check"></i>';
+                                        btn.title = "IP Blocked";
+                                    }
+                                });
+                                
+                                showToast(`IP ${actionIp} has been blocked using Windows Firewall`, 'success');
+                            } else {
+                                showToast(data.message || 'Error blocking IP', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast(`Error blocking IP: ${error}`, 'error');
+                        });
+                    }
                 });
                 
-                document.querySelector('.monitor-action').addEventListener('click', function() {
+                // Simple placeholders for other action buttons
+                document.querySelector('.monitor-action')?.addEventListener('click', function() {
                     const actionIp = this.getAttribute('data-ip');
-                    alert(`IP ${actionIp} has been added to the monitoring list.`);
+                    showToast(`IP ${actionIp} has been added to the monitoring list.`, 'success');
                 });
                 
-                document.querySelector('.whois-action').addEventListener('click', function() {
+                document.querySelector('.whois-action')?.addEventListener('click', function() {
                     const actionIp = this.getAttribute('data-ip');
-                    alert(`Performing WHOIS lookup for IP ${actionIp}...`);
-                    // In a real application, this would fetch WHOIS data from a backend endpoint
+                    showToast(`Performing WHOIS lookup for IP ${actionIp}...`, 'success');
                 });
             });
         });
         
-        // Close the modal when clicking the close button
-        closeBtn.addEventListener('click', function() {
-            modal.style.display = 'none';
+        // Close modal when clicking the close button
+        document.querySelector('.close')?.addEventListener('click', function() {
+            document.getElementById('ipDetailsModal').style.display = 'none';
         });
         
-        // Close the modal when clicking outside the modal content
+        // Close modal when clicking outside of it
         window.addEventListener('click', function(event) {
-            if (event.target == modal) {
+            const modal = document.getElementById('ipDetailsModal');
+            if (event.target === modal) {
                 modal.style.display = 'none';
             }
         });
-        
-        // Add CSS for modal display
-        if (!document.getElementById('modalStyles')) {
-            const style = document.createElement('style');
-            style.id = 'modalStyles';
-            style.innerHTML = `
-                .modal {
-                    display: none;
-                    position: fixed;
-                    z-index: 1000;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(0,0,0,0.5);
-                }
-                
-                .modal-content {
-                    background-color: #fff;
-                    margin: 10% auto;
-                    padding: 20px;
-                    border-radius: 8px;
-                    width: 70%;
-                    max-width: 600px;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                    position: relative;
-                }
-                
-                .close {
-                    position: absolute;
-                    right: 20px;
-                    top: 15px;
-                    font-size: 28px;
-                    font-weight: bold;
-                    cursor: pointer;
-                }
-                
-                .ip-details {
-                    margin: 20px 0;
-                }
-                
-                .detail-row {
-                    display: flex;
-                    margin-bottom: 10px;
-                    border-bottom: 1px solid #eee;
-                    padding-bottom: 10px;
-                }
-                
-                .detail-label {
-                    font-weight: bold;
-                    width: 150px;
-                }
-                
-                .detail-value {
-                    flex: 1;
-                }
-                
-                .detail-actions {
-                    display: flex;
-                    gap: 10px;
-                    margin-top: 20px;
-                }
-                
-                @media (max-width: 768px) {
-                    .modal-content {
-                        width: 90%;
-                        margin: 20% auto;
-                    }
-                    
-                    .detail-actions {
-                        flex-direction: column;
-                    }
-                    
-                    .detail-row {
-                        flex-direction: column;
-                    }
-                    
-                    .detail-label {
-                        width: 100%;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
     </script>
+
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 70%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .ip-details {
+            margin: 20px 0;
+        }
+        
+        .detail-row {
+            display: flex;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        
+        .detail-value {
+            flex: 1;
+        }
+        
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #fff;
+            border-radius: 4px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast-content {
+            display: flex;
+            align-items: center;
+        }
+        
+        .toast-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        
+        .toast-icon.success {
+            color: #28a745;
+        }
+        
+        .toast-icon.error {
+            color: #dc3545;
+        }
+        
+        .toast-message {
+            font-size: 14px;
+        }
+    </style>
 </body>
 </html>

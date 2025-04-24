@@ -1,0 +1,3 @@
+@echo off
+echo Requesting administrative privileges...
+powershell -Command "Start-Process cmd -Verb RunAs -ArgumentList '/c cd /d %cd% && python app.py'" 
