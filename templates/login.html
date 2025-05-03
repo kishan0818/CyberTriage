@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | DDoS Shield</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1>DDoS Shield</h1>
+                </div>
+                <h2>Welcome Back</h2>
+                <form class="auth-form" action="/login" method="POST">
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-user"></i>
+                            Username
+                        </label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-lock"></i>
+                            Password
+                        </label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Login
+                    </button>
+                </form>
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <div class="auth-footer">
+                            {% for message in messages %}
+                                <div class="alert alert-danger">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                <div class="auth-footer">
+                    <p>Don't have an account? <a href="/register" class="link-primary">Register here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
