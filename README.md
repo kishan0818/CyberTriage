@@ -69,7 +69,7 @@ python app.py
 
 ## Contributors
 - **Jayakishan B** - [LinkedIn](https://www.linkedin.com/in/jayakishan-balagopal-978613300/) | [GitHub](https://github.com/kishan0818)
-- **Jaspreet Singh** - [LinkedIn]((https://www.linkedin.com/in/jaspreet-singh-b0366028b/)) | [GitHub](https://github.com/Jaspreet51ngh)
+- **Jaspreet Singh** - [LinkedIn](https://www.linkedin.com/in/jaspreet-singh-b0366028b/) | [GitHub](https://github.com/Jaspreet51ngh)
 
 ## License
 This project is licensed under the **MIT License**.
