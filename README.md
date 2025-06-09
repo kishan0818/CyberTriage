@@ -72,7 +72,7 @@ python app.py
 - **Jaspreet Singh** - [LinkedIn](https://www.linkedin.com/in/jaspreet-singh-b0366028b/) | [GitHub](https://github.com/Jaspreet51ngh)
 
 ## License
-This project is licensed under the **MIT License**.
+This project is licensed under the **CC0 1.0 Universal**.
 
 Feel free to star this repository if you find it useful.
 
