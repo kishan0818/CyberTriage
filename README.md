@@ -63,9 +63,11 @@ We proudly won First Prize in both the Paper Talks and Project Expo (Protovision
 git clone https://github.com/kishan0818/Cyber_Triage.git
 cd Cyber_Triage
 pip install -r requirements.txt
-python app.py
+.\run_app.bat
 
 ```
+- Provide Administrative Privileges
+- Redirect to http://127.0.0.1:5000 to access the page in local machine
 
 ## Contributors
 - **Jayakishan B** - [LinkedIn](https://www.linkedin.com/in/jayakishan-balagopal-978613300/) | [GitHub](https://github.com/kishan0818)

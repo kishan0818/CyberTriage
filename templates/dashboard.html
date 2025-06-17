@@ -6,7 +6,6 @@
     <title>DDoS Shield - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Include sidebar styles here or link to external CSS */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -93,12 +92,10 @@
         <div class="dashboard-charts">
             <div class="chart-container">
                 <h3>Threat Detection Trends</h3>
-                <!-- Placeholder for Chart.js or similar visualization -->
                 <canvas id="threatTrends"></canvas>
             </div>
             <div class="chart-container">
                 <h3>Traffic Analysis</h3>
-                <!-- Placeholder for Chart.js or similar visualization -->
                 <canvas id="trafficAnalysis"></canvas>
             </div>
         </div>
@@ -106,7 +103,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Example Chart.js configurations
         new Chart(document.getElementById('threatTrends'), {
             type: 'line',
             data: {

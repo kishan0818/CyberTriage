@@ -1,19 +1,5 @@
 [
   {
-    "ip": "20.210.9.245",
-    "rule_name": "Block-IP-20-210-9-245",
-    "date_blocked": "2025-04-24 21:28:03",
-    "blocked_by": "admin",
-    "reason": "Suspicious activity detected"
-  },
-  {
-    "ip": "142.250.183.238",
-    "rule_name": "Block-IP-142-250-183-238",
-    "date_blocked": "2025-04-24 23:06:07",
-    "blocked_by": "admin",
-    "reason": "Suspicious activity detected"
-  },
-  {
     "ip": "172.16.114.22",
     "rule_name": "Block-IP-172-16-114-22",
     "date_blocked": "2025-04-24 23:34:34",
@@ -31,6 +17,13 @@
     "ip": "142.250.182.106",
     "rule_name": "Block-IP-142-250-182-106",
     "date_blocked": "2025-05-02 14:07:03",
+    "blocked_by": "admin",
+    "reason": "Suspicious activity detected"
+  },
+  {
+    "ip": "142.250.195.110",
+    "rule_name": "Block-IP-142-250-195-110",
+    "date_blocked": "2025-05-05 13:23:08",
     "blocked_by": "admin",
     "reason": "Suspicious activity detected"
   }

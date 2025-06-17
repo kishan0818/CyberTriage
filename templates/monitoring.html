@@ -100,7 +100,6 @@
                                 </tr>
                             </thead>
                             <tbody id="monitoringResults">
-                                <!-- Results will be populated here -->
                             </tbody>
                         </table>
                     </div>
@@ -122,7 +121,7 @@
         let isPaused = false;
         let updateInterval;
         
-        // Start monitoring
+        
         document.getElementById('startMonitoring').addEventListener('click', function() {
             fetch('/start_monitoring', { method: 'POST' })
                 .then(response => response.json())
@@ -141,8 +140,7 @@
                     console.error('Error:', error);
                 });
         });
-        
-        // Stop monitoring
+
         document.getElementById('stopMonitoring').addEventListener('click', function() {
             fetch('/stop_monitoring', { method: 'POST' })
                 .then(response => response.json())
@@ -162,8 +160,7 @@
                     console.error('Error:', error);
                 });
         });
-        
-        // Pause/Resume monitoring
+
         document.getElementById('pauseMonitoring').addEventListener('click', function() {
             isPaused = !isPaused;
             updateUI();
