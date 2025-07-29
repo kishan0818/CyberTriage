@@ -1,2 +1,33 @@
 ddos_attack_dataset.csv
 predict.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Flask / Build
+instance/
+.env
+.env.*
+*.sqlite3
+uploads/
+
+# PyInstaller build folders
+build/
+dist/
+*.spec
+
+# VSCode / JetBrains / IDE
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Render config (optional to ignore if not needed)
+render.yaml

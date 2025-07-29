@@ -1230,11 +1230,10 @@ def upload():
     return render_template('upload.html', username=session['username'])
 
 if __name__ == '__main__':
-    # Make sure uploads directory exists
+    # Create required directories (for local dev)
     os.makedirs('uploads', exist_ok=True)
-    
-    # Make sure models directory exists
     os.makedirs(MODEL_PATH, exist_ok=True)
-    
-    # Set to debug mode for detailed error messages
-    app.run(debug=True)
+
+    # Run on all IPs (for local or Render), and default to port 10000
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port, debug=True)
